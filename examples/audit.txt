@@ -1,0 +1,16 @@
+go run . "examples/goodexample00.txt"
+go run . "examples/goodexample01.txt"
+go run . "examples/goodexample02.txt"
+go run . "examples/goodexample03.txt"
+go run . "examples/hardexample.txt"
+
+go run . "examples/badexample.txt"
+go run . "examples/badexample00.txt"
+go run . "examples/badexample01.txt"
+go run . "examples/badexample02.txt"
+go run . "examples/badexample03.txt"
+go run . "examples/badexample04.txt"
+go run . "examples/badformat.txt"
+
+go run . "examples/exampleintra00.txt"
+go run . "examples/exampleintra01.txt"
