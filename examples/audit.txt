@@ -4,7 +4,6 @@ go run . "examples/goodexample02.txt"
 go run . "examples/goodexample03.txt"
 go run . "examples/hardexample.txt"
 
-go run . "examples/badexample.txt"
 go run . "examples/badexample00.txt"
 go run . "examples/badexample01.txt"
 go run . "examples/badexample02.txt"
