@@ -6,172 +6,100 @@ import (
 	"os"
 )
 
-// solve is the main entry point building up the smallest feasible board and
-// running DFS with MRV + caching.
+// solve tries increasing board sizes from the theoretical minimum up to a dynamic upper bound
 func solve(shapes []shape) (*board, error) {
 	if len(shapes) == 0 {
 		return nil, errNoSolution
 	}
 
+	// build pieces with letters A, B, C, ...
 	pieces := make([]piece, len(shapes))
 	for i, sh := range shapes {
 		pieces[i] = piece{letter: byte('A' + i), shape: sh}
 	}
 
-	// Calculate minimum board size (ceil(sqrt(4 * piece_count)))
-	minSize := int(math.Ceil(math.Sqrt(float64(4 * len(shapes)))))
-	if minSize < 1 {
-		minSize = 1
-	}
+	// minimum n = ceil(sqrt(4 * tetrominoes))
+	minSize := max(int(math.Ceil(math.Sqrt(float64(4*len(shapes))))), 1)
 
-	// Try board sizes from minimum to maximum (8x8)
-	for n := minSize; n <= 8; n++ {
+	// dynamic upper bound: enough to pack tetrominoes 4x4 "bins" (loose but safe)
+	tetrominoes := len(shapes)
+	maxN := max(4*int(math.Ceil(math.Sqrt(float64(tetrominoes)))), minSize)
+
+	for n := minSize; n <= maxN; n++ {
 		totalCells := n * n
-		coveredCells := 4 * len(shapes)
+		coveredCells := 4 * tetrominoes
 		emptyCellsAllowed := totalCells - coveredCells
 
-		// Skip sizes that can't possibly fit all pieces
+		// skip sizes that cannot fit even theoretically
 		if emptyCellsAllowed < 0 {
 			continue
 		}
 
 		fmt.Fprintf(os.Stderr, "trying n=%d (empty cells allowed: %d)...\n", n, emptyCellsAllowed)
 
-		// Initialize board and solver
-		b := newBoard(n)
+		// initialize board and solver
+		board := newBoard(n)
 		s := &solver{
-			b:         b,
-			pieces:    pieces,
-			oriCache:  make(map[string][]shape),
-			candCache: make(map[candKey][]cand),
+			board:    board,
+			pieces:   pieces,
+			oriCache: make(map[string][]shape),
 		}
 
-		// Attempt to solve with current board size
-		if s.dfsPlaceMRVFirstHole(0, emptyCellsAllowed) {
-			fmt.Fprintf(os.Stderr, "n=%d solved\n", n)
-			return b, nil
+		if s.placeAllPiecesExact(0) {
+			return board, nil
 		}
 	}
 
 	return nil, errNoSolution
 }
 
-// dfsPlaceMRVFirstHole tries to place pieces using MRV on the current first
-// empty cell. It also supports leaving exactly `emptyCellsAllowed` holes.
-func (s *solver) dfsPlaceMRVFirstHole(idx int, emptyCellsAllowed int) bool {
+// placeAllPiecesExact tries to exactly tile the board with all pieces (no holes)
+func (s *solver) placeAllPiecesExact(idx int) bool {
+	// all pieces placed
 	if idx == len(s.pieces) {
-		// verify exact number of empty cells left
-		emptyCount := 0
-		for y := 0; y < s.b.n; y++ {
-			for x := 0; x < s.b.n; x++ {
-				if s.b.chars[y][x] == '.' {
-					emptyCount++
-				}
-			}
-		}
-		return emptyCount == emptyCellsAllowed
+		return true
 	}
 
-	// Pick first empty cell (top-left)
-	tx, ty, ok := s.b.firstEmpty()
+	// pick first empty cell
+	x, y, ok := s.board.firstEmpty()
 	if !ok {
-		return idx == len(s.pieces) && emptyCellsAllowed == 0
+		return idx == len(s.pieces) // no '.' left means all must be placed
 	}
 
-	// Try ALL pieces A..Z for this cell, before considering a hole
+	// try each remaining piece
 	for i := idx; i < len(s.pieces); i++ {
-		cands := s.candidatesForFixedPiece(i, tx, ty)
-		if len(cands) == 0 {
-			continue
-		}
-
+		// swap-in piece i at position idx
 		if i != idx {
 			s.pieces[idx], s.pieces[i] = s.pieces[i], s.pieces[idx]
 		}
-		letter := s.pieces[idx].letter
+		p := s.pieces[idx]
 
-		for _, c := range cands {
-			if !s.b.canPlace(c.ori, c.ox, c.oy) {
-				continue
+		// try each unique orientation
+		orientation := s.orientationsCanonical(p.shape)
+		for _, orient := range orientation {
+			// anchor each cell of the orientation onto (x,y)
+			for _, cell := range orient.cells {
+				offsetX, offsetY := x-cell.x, y-cell.y // compute origin offset
+				if !s.board.canPlace(orient, offsetX, offsetY) {
+					continue // blocked by bounds or occupancy
+				}
+				s.board.place(orient, offsetX, offsetY, p.letter) // commit placement
+				fmt.Fprintf(os.Stderr, "TRY placeAllPiecesExact idx=%d ...\n", idx)
+				if s.placeAllPiecesExact(idx + 1) { // recurse to next piece
+					fmt.Fprintf(os.Stderr, "COMPLETE placeAllPiecesExact idx=%d \n", idx)
+					return true // propagate success
+				}
+				fmt.Fprintf(os.Stderr, "REMOVE placeAllPiecesExact idx=%d \n", idx)
+				s.board.remove(orient, offsetX, offsetY) // backtrack placement
 			}
-			s.b.place(c.ori, c.ox, c.oy, letter)
-			if s.checkHolesDivisibleBy4() && s.dfsPlaceMRVFirstHole(idx+1, emptyCellsAllowed) {
-				return true
-			}
-			s.b.remove(c.ori, c.ox, c.oy)
 		}
 
+		// restore original order before trying next i
 		if i != idx {
 			s.pieces[idx], s.pieces[i] = s.pieces[i], s.pieces[idx]
 		}
 	}
 
-	// Use a hole only if nothing fits this cell
-	if emptyCellsAllowed > 0 {
-		orig := s.b.chars[ty][tx]
-		s.b.chars[ty][tx] = ' '
-		ok := s.dfsPlaceMRVFirstHole(idx, emptyCellsAllowed-1)
-		s.b.chars[ty][tx] = orig
-		return ok
-	}
+	// no feasible placement for current decision
 	return false
-}
-
-// checkHolesDivisibleBy4 returns false if any connected component of '.' cells
-// has size not divisible by 4. It ignores ' ' holes by design.
-func (s *solver) checkHolesDivisibleBy4() bool {
-	n := s.b.n
-	seen := make([]bool, n*n)
-	idx := func(x, y int) int { return y*n + x }
-
-	// Reusable queue slices to avoid allocations
-	qx := make([]int, 0, n*n)
-	qy := make([]int, 0, n*n)
-
-	for y := 0; y < n; y++ {
-		for x := 0; x < n; x++ {
-			if s.b.chars[y][x] != '.' || seen[idx(x, y)] {
-				continue
-			}
-
-			// BFS over '.' cells
-			qx = qx[:0]
-			qy = qy[:0]
-			qx = append(qx, x)
-			qy = append(qy, y)
-			seen[idx(x, y)] = true
-
-			size := 0
-			for head := 0; head < len(qx); head++ {
-				cx, cy := qx[head], qy[head]
-				size++
-				// 4-neighborhood
-				if cx+1 < n && s.b.chars[cy][cx+1] == '.' && !seen[idx(cx+1, cy)] {
-					seen[idx(cx+1, cy)] = true
-					qx = append(qx, cx+1)
-					qy = append(qy, cy)
-				}
-				if cx-1 >= 0 && s.b.chars[cy][cx-1] == '.' && !seen[idx(cx-1, cy)] {
-					seen[idx(cx-1, cy)] = true
-					qx = append(qx, cx-1)
-					qy = append(qy, cy)
-				}
-				if cy+1 < n && s.b.chars[cy+1][cx] == '.' && !seen[idx(cx, cy+1)] {
-					seen[idx(cx, cy+1)] = true
-					qx = append(qx, cx)
-					qy = append(qy, cy+1)
-				}
-				if cy-1 >= 0 && s.b.chars[cy-1][cx] == '.' && !seen[idx(cx, cy-1)] {
-					seen[idx(cx, cy-1)] = true
-					qx = append(qx, cx)
-					qy = append(qy, cy-1)
-				}
-			}
-
-			if size%4 != 0 {
-				return false // prune: impossible to fill this island with tetrominoes
-			}
-		}
-	}
-	return true
 }

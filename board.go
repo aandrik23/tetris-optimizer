@@ -26,10 +26,10 @@ func (b *board) firstEmpty() (int, int, bool) {
 	return 0, 0, false
 }
 
-// canPlace checks whether shape s can be placed at origin (ox,oy) on '.'
-func (b *board) canPlace(s shape, ox, oy int) bool {
+// canPlace checks whether shape s can be placed at origin (offsetX, offsetY) on '.'
+func (b *board) canPlace(s shape, offsetX, offsetY int) bool {
 	for _, c := range s.cells {
-		x, y := ox+c.x, oy+c.y
+		x, y := offsetX+c.x, offsetY+c.y
 		if x < 0 || x >= b.n || y < 0 || y >= b.n || b.chars[y][x] != '.' {
 			return false
 		}
@@ -37,18 +37,18 @@ func (b *board) canPlace(s shape, ox, oy int) bool {
 	return true
 }
 
-// place writes letter for all cells of shape s at origin (ox,oy)
-func (b *board) place(s shape, ox, oy int, letter byte) {
+// place writes letter for all cells of shape s at origin (offsetX,offsetY)
+func (b *board) place(s shape, offsetX, offsetY int, letter byte) {
 	for _, c := range s.cells {
-		x, y := ox+c.x, oy+c.y
+		x, y := offsetX+c.x, offsetY+c.y
 		b.chars[y][x] = letter
 	}
 }
 
-// remove restores '.' for all cells of shape s at origin (ox,oy)
-func (b *board) remove(s shape, ox, oy int) {
+// remove restores '.' for all cells of shape s at origin (offsetX,offsetY)
+func (b *board) remove(s shape, offsetX, offsetY int) {
 	for _, c := range s.cells {
-		x, y := ox+c.x, oy+c.y
+		x, y := offsetX+c.x, offsetY+c.y
 		if x >= 0 && x < b.n && y >= 0 && y < b.n {
 			b.chars[y][x] = '.'
 		}
