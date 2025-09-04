@@ -38,22 +38,43 @@ func TestPlaceAllPiecesExact_SingleOIn2x2(t *testing.T) {
 	}
 }
 
-func TestPlaceAllPiecesExact_TwoOIn4x4(t *testing.T) {
-	// two O pieces cannot exactly fill 4x4 (need 4 O to fill 16)
-	o := mustParse(t, []string{
-		"##..",
-		"##..",
+func TestPlaceAllPiecesExact_IILZ_FailsOn4x4(t *testing.T) {
+	// I (vertical), I (horizontal), L, Z cannot exactly tile a 4x4
+	Iv := mustParse(t, []string{
+		"...#",
+		"...#",
+		"...#",
+		"...#",
+	})
+	Ih := mustParse(t, []string{
+		"....",
+		"....",
+		"....",
+		"####",
+	})
+	L := mustParse(t, []string{
+		".###",
+		"...#",
 		"....",
 		"....",
 	})
+	Z := mustParse(t, []string{
+		"....",
+		"..##",
+		".##.",
+		"....",
+	})
+
 	b := newBoard(4)
 	s := &solver{
 		board:    b,
-		pieces:   []piece{{letter: 'A', shape: o}, {letter: 'B', shape: o}},
+		pieces:   []piece{{'A', L}, {'B', Z}, {'C', Iv}, {'D', Ih}},
 		oriCache: make(map[string][]shape),
 	}
+
+	// exact cover should be impossible
 	if s.placeAllPiecesExact(0) {
-		t.Fatal("expected no exact tiling for 2 O pieces on 4x4")
+		t.Fatal("expected no exact tiling for {I,I,L,Z} on 4x4")
 	}
 }
 

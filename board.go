@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"strings"
+	"testing"
+)
 
 // newBoard returns an n×n board initialized with '.' (empty) cells
 func newBoard(n int) *board {
@@ -65,4 +68,30 @@ func (b *board) String() string {
 		}
 	}
 	return sb.String()
+}
+
+func TestBoard_String(t *testing.T) {
+	b := newBoard(3)
+
+	// expected all dots
+	want := "...\n...\n..."
+	if got := b.String(); got != want {
+		t.Fatalf("String() = %q, want %q", got, want)
+	}
+
+	// place some letters
+	b.chars[0][0] = 'A'
+	b.chars[1][1] = 'B'
+	b.chars[2][2] = 'C'
+
+	want = "A..\n.B.\n..C"
+	if got := b.String(); got != want {
+		t.Fatalf("after modifications, String() = %q, want %q", got, want)
+	}
+
+	// ensure no trailing newline at end
+	got := b.String()
+	if got[len(got)-1] == '\n' {
+		t.Fatal("unexpected trailing newline at end of String()")
+	}
 }

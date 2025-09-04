@@ -26,6 +26,32 @@ func TestNewBoard(t *testing.T) {
 	}
 }
 
+func TestBoard_FirstEmpty(t *testing.T) {
+	b := newBoard(3)
+
+	// first empty in a fresh board is (0,0)
+	if x, y, ok := b.firstEmpty(); !ok || x != 0 || y != 0 {
+		t.Fatalf("expected (0,0,true), got (%d,%d,%v)", x, y, ok)
+	}
+
+	// fill (0,0) and check moves to (1,0)
+	b.chars[0][0] = 'X'
+	x, y, ok := b.firstEmpty()
+	if !ok || x != 1 || y != 0 {
+		t.Fatalf("expected first empty at (1,0), got (%d,%d), ok=%v", x, y, ok)
+	}
+
+	// fill the rest and expect no empty
+	for yy := range 3 {
+		for xx := range 3 {
+			b.chars[yy][xx] = 'X'
+		}
+	}
+	if x, y, ok := b.firstEmpty(); ok {
+		t.Fatalf("expected no empty cell, got (%d,%d)", x, y)
+	}
+}
+
 func TestBoard_CanPlace_Place_Remove(t *testing.T) {
 	b := newBoard(4)
 	o := shape{cells: []cell{{0, 0}, {1, 0}, {0, 1}, {1, 1}}, width: 2, height: 2}
@@ -101,30 +127,4 @@ func TestBoard_CanPlace_Place_Remove(t *testing.T) {
 			t.Fatalf("String() after place =\n%s\nwant:\n%s", got, want)
 		}
 	})
-}
-
-func TestBoard_FirstEmpty(t *testing.T) {
-	b := newBoard(3)
-
-	// first empty in a fresh board is (0,0)
-	if x, y, ok := b.firstEmpty(); !ok || x != 0 || y != 0 {
-		t.Fatalf("expected (0,0,true), got (%d,%d,%v)", x, y, ok)
-	}
-
-	// fill (0,0) and check moves to (1,0)
-	b.chars[0][0] = 'X'
-	x, y, ok := b.firstEmpty()
-	if !ok || x != 1 || y != 0 {
-		t.Fatalf("expected first empty at (1,0), got (%d,%d), ok=%v", x, y, ok)
-	}
-
-	// fill the rest and expect no empty
-	for yy := 0; yy < 3; yy++ {
-		for xx := 0; xx < 3; xx++ {
-			b.chars[yy][xx] = 'X'
-		}
-	}
-	if x, y, ok := b.firstEmpty(); ok {
-		t.Fatalf("expected no empty cell, got (%d,%d)", x, y)
-	}
 }
