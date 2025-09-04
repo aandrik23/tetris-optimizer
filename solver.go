@@ -84,12 +84,9 @@ func (s *solver) placeAllPiecesExact(idx int) bool {
 					continue // blocked by bounds or occupancy
 				}
 				s.board.place(orient, offsetX, offsetY, p.letter) // commit placement
-				fmt.Fprintf(os.Stderr, "TRY placeAllPiecesExact idx=%d ...\n", idx)
-				if s.placeAllPiecesExact(idx + 1) { // recurse to next piece
-					fmt.Fprintf(os.Stderr, "COMPLETE placeAllPiecesExact idx=%d \n", idx)
+				if s.placeAllPiecesExact(idx + 1) {               // recurse to next piece
 					return true // propagate success
 				}
-				fmt.Fprintf(os.Stderr, "REMOVE placeAllPiecesExact idx=%d \n", idx)
 				s.board.remove(orient, offsetX, offsetY) // backtrack placement
 			}
 		}
