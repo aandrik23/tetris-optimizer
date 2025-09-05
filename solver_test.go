@@ -101,3 +101,30 @@ func TestSolve_Exact4OOn4x4(t *testing.T) {
 		}
 	}
 }
+
+func TestPlaceAllPiecesExact_OOOI_FailsOn4x4(t *testing.T) {
+	// three O plus one I cannot exactly tile a 4x4
+	o := mustParse(t, []string{
+		"##..",
+		"##..",
+		"....",
+		"....",
+	})
+	I := mustParse(t, []string{
+		"####",
+		"....",
+		"....",
+		"....",
+	})
+
+	b := newBoard(4)
+	s := &solver{
+		board:    b,
+		pieces:   []piece{{'A', o}, {'B', o}, {'C', o}, {'D', I}},
+		oriCache: make(map[string][]shape),
+	}
+	// exact cover must be impossible
+	if s.placeAllPiecesExact(0) {
+		t.Fatal("expected no exact tiling for {O,O,O,I} on 4x4")
+	}
+}

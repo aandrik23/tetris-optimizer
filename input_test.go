@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -79,7 +80,7 @@ func TestReadShapes_EmptyFile_Error(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for empty file, got nil with %d shapes", len(shs))
 	}
-	if err != errInvalidFormat {
+	if !errors.Is(err, errInvalidFormat) {
 		t.Fatalf("expected errInvalidFormat, got %v", err)
 	}
 }

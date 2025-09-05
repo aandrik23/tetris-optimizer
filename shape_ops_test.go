@@ -83,16 +83,27 @@ func TestParseShape_Disconnected(t *testing.T) {
 }
 
 func TestKeyFor_Basic(t *testing.T) {
-	a := []cell{{0, 0}, {1, 0}, {0, 1}, {1, 1}} // O piece
-	b := []cell{{0, 0}, {1, 0}, {0, 1}, {1, 1}}
+	// O piece
+	a := []cell{{0, 0}, {1, 0}, {0, 1}, {1, 1}}
 
 	ka := keyFor(a)
+
+	// same shape, same order
+	b := []cell{{0, 0}, {1, 0}, {0, 1}, {1, 1}}
 	kb := keyFor(b)
 	if ka != kb {
 		t.Fatalf("expected same key for identical shapes, got %q vs %q", ka, kb)
 	}
 
-	c := []cell{{0, 0}, {1, 0}, {2, 0}, {3, 0}} // I piece
+	// permutation invariance (order of cells should not matter)
+	bPerm := []cell{{0, 1}, {1, 1}, {1, 0}, {0, 0}}
+	kbPerm := keyFor(bPerm)
+	if ka != kbPerm {
+		t.Fatalf("expected same key for permuted cells, got %q vs %q", ka, kbPerm)
+	}
+
+	// different shape (I piece) must differ
+	c := []cell{{0, 0}, {1, 0}, {2, 0}, {3, 0}}
 	kc := keyFor(c)
 	if ka == kc {
 		t.Fatalf("expected different keys for different shapes, got %q vs %q", ka, kc)
@@ -144,11 +155,12 @@ func TestRotate90_Rectangle(t *testing.T) {
 	}
 
 	// verify each (x,y) -> (h-1-y, x)
+	h := s.height // use dynamic height
 	want := map[[2]int]bool{
-		{3 - 1 - 0, 0}: true, // (0,0)->(2,0)
-		{3 - 1 - 0, 1}: true, // (1,0)->(2,1)
-		{3 - 1 - 1, 0}: true, // (0,1)->(1,0)
-		{3 - 1 - 2, 1}: true, // (1,2)->(0,1)
+		{h - 1 - 0, 0}: true,
+		{h - 1 - 0, 1}: true,
+		{h - 1 - 1, 0}: true,
+		{h - 1 - 2, 1}: true,
 	}
 	for _, c := range r.cells {
 		if !want[[2]int{c.x, c.y}] {
@@ -164,7 +176,7 @@ func TestRotate90_FourTimesReturnsOriginal(t *testing.T) {
 		height: 2,
 	}
 	r := s
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		r = rotate90(r)
 	}
 	// compare sets
